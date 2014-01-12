@@ -63,7 +63,7 @@ class Tubesock
       each_frame do |data|
         @message_handlers.each{|h| h.call(data) }
       end
-      close
+      close("stopped listening")
     end
   end
 
