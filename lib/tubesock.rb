@@ -68,7 +68,7 @@ class Tubesock
   end
 
   def close(error)
-    @close_handlers.each{ |h| h.call(error) }
+    @close_handlers.each{|h| h.call(error) }
     @socket.close unless @socket.closed?
   end
 
