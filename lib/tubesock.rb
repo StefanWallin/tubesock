@@ -40,7 +40,7 @@ class Tubesock
     )
     @socket.write frame.to_s
   rescue IOError, Errno::EPIPE => e
-    close(e)
+    close(e.message)
   end
 
   def onopen(&block)
@@ -106,6 +106,6 @@ class Tubesock
       end
     end
   rescue Errno::EHOSTUNREACH, Errno::ETIMEDOUT, Errno::ECONNRESET => e
-    close(e) # client disconnected or timed out
+    close(e.message) # client disconnected or timed out
   end
 end
