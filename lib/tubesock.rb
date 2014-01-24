@@ -10,10 +10,13 @@ class Tubesock
   def initialize(socket, version)
     @socket     = socket
     @version    = version
+    @num_valid_timeouts = 5
 
     @open_handlers    = []
     @message_handlers = []
     @close_handlers   = []
+
+    @ping_frames = {}
   end
 
   def self.hijack(env)
@@ -32,6 +35,10 @@ class Tubesock
     end
   end
 
+  def setTimeouts(new_timeout)
+    @num_valid_timeouts = new_timeout if new_timeout.is_a? Integer
+  end
+
   def send_data data, type = :text
     frame = WebSocket::Frame::Outgoing::Server.new(
       version: @version,
@@ -39,8 +46,10 @@ class Tubesock
       type: type
     )
     @socket.write frame.to_s
-  rescue IOError, Errno::EPIPE => e
-    close(e.message)
+  rescue IOError
+    close('Sending: IOError')
+  rescue Errno::EPIPE
+    close('Sending: Errno::EPIPE')
   end
 
   def onopen(&block)
@@ -57,35 +66,45 @@ class Tubesock
 
   def listen
     keepalive
-    thread = Thread.new do
+    listenThread = Thread.new do
       Thread.current.abort_on_exception = true
       @open_handlers.each(&:call)
       each_frame do |data|
-        @message_handlers.each{|h| h.call(data) }
+        @message_handlers.each{ |h| h.call(data) }
       end
-      close("stopped listening")
     end
+
     onclose do
-      thread.kill
+      listenThread.kill unless keepaliveThread.nil?
     end
   end
 
-  def close(error)
-    @close_handlers.each{|h| h.call(error) }
+  def close(cause)
+    cause = "unknown" if cause.nil?
+    @close_handlers.each{ |h| h.call(cause) }
     @socket.close unless @socket.closed?
   end
 
+  def closed?
+    @socket.closed?
+  end
+
   def keepalive
-    thread = Thread.new do
+    keepaliveThread = Thread.new do
       Thread.current.abort_on_exception = true
       loop do
         sleep 5
-        send_data nil, :ping
+        stamp = Time.now.to_i.to_s
+        send_data stamp, :ping
+        @ping_frames[stamp.to_sym] = 1
+        if @ping_frames.length > @num_valid_timeouts
+          close("Keepalive: Timed out")
+        end
       end
     end
 
     onclose do
-      thread.kill
+      keepaliveThread.kill unless keepaliveThread.nil?
     end
   end
 
@@ -98,6 +117,8 @@ class Tubesock
       framebuffer << data
       while frame = framebuffer.next
         case frame.type
+        when :pong
+          @ping_frames.delete(frame.data.to_sym)
         when :close
           return
         when :text, :binary
@@ -105,7 +126,11 @@ class Tubesock
         end
       end
     end
-  rescue Errno::EHOSTUNREACH, Errno::ETIMEDOUT, Errno::ECONNRESET => e
-    close(e.message) # client disconnected or timed out
+  rescue Errno::ETIMEDOUT
+    close('Recieve: Errno::ETIMEDOUT')
+  rescue Errno::ECONNRESET
+    close('Recieve: Errno::ECONNRESET')
+  rescue Errno::EHOSTUNREACH
+    close('Recieve: Errno::EHOSTUNREACH')
   end
 end
