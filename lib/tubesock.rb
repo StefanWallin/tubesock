@@ -66,13 +66,16 @@ class Tubesock
 
   def listen
     keepalive
-    Thread.new do
+    listenThread = Thread.new do
       Thread.current.abort_on_exception = true
       @open_handlers.each(&:call)
       each_frame do |data|
         @message_handlers.each{ |h| h.call(data) }
       end
-      close("listened enough")
+    end
+
+    onclose do
+      listenThread.kill unless keepaliveThread.nil?
     end
   end
 
