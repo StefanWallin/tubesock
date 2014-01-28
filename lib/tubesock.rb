@@ -72,10 +72,12 @@ class Tubesock
       each_frame do |data|
         @message_handlers.each{ |h| h.call(data) }
       end
+      close("stopped listening")
     end
 
     onclose do
-      listenThread.kill unless keepaliveThread.nil?
+      puts "ends listenThread"
+      listenThread.kill unless listenThread.nil?
     end
   end
 
@@ -104,6 +106,7 @@ class Tubesock
     end
 
     onclose do
+      puts "ends keepaliveThread"
       keepaliveThread.kill unless keepaliveThread.nil?
     end
   end
