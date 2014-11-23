@@ -76,7 +76,6 @@ class Tubesock
     end
 
     onclose do
-      puts "ends listenThread"
       listenThread.kill unless listenThread.nil?
     end
   end
@@ -106,7 +105,6 @@ class Tubesock
     end
 
     onclose do
-      puts "ends keepaliveThread"
       keepaliveThread.kill unless keepaliveThread.nil?
     end
   end
