@@ -133,5 +133,9 @@ class Tubesock
     close('Recieve: Errno::ECONNRESET')
   rescue Errno::EHOSTUNREACH
     close('Recieve: Errno::EHOSTUNREACH')
+  rescue IOError
+    close("Recieve: IOError")
+  rescue Errno::EBADF
+    close("Errno::EBADF")
   end
 end
