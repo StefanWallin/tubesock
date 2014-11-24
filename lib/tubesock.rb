@@ -69,7 +69,7 @@ class Tubesock
       each_frame do |data|
         @message_handlers.each{|h| h.call(data) }
       end
-      close
+      close('Client hung up')
 
       onclose do
         listenThread.kill unless listenThread.nil?
