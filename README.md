@@ -77,6 +77,16 @@ Sometimes connections stop working and you might want to handle that in your app
     ## close any socket/session-related resource
   end
 ```
+
+### Timeouts
+Default timeout is 5 missed frames which correlates to roughly 30 seconds. The timeout works by leveraging the websocket ping-pong methods. These are sent every 5 seconds by the server, the client then responds immediately. When sending limit+1th frame we check if we are above the limit and if so closes the thread.
+
+The default behavior is to check when sending the 6th frame, you can change this with the ```set_num_missed_frames```-method.
+```
+  # 11 5-second gaps will equate 60 seconds timeout
+  tubesock.set_num_missed_frames(11) 
+```
+
 ## Contributing
 
 1. Fork it
