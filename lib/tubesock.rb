@@ -99,7 +99,7 @@ class Tubesock
         send_data stamp, :ping
         @ping_frames[stamp.to_sym] = 1 # Any non-null-value would do.
         if @ping_frames.length > @num_valid_timeouts
-          close
+          close('Keepalive: Timed out')
         end
       end
     end
