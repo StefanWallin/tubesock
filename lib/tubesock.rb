@@ -57,13 +57,17 @@ class Tubesock
 
   def listen
     keepalive
-    Thread.new do
+    listenThread = Thread.new do
       Thread.current.abort_on_exception = true
       @open_handlers.each(&:call)
       each_frame do |data|
         @message_handlers.each{|h| h.call(data) }
       end
       close
+
+      onclose do
+        listenThread.kill unless listenThread.nil?
+      end
     end
   end
 
@@ -106,7 +110,7 @@ class Tubesock
         end
       end
     end
-  rescue Errno::EHOSTUNREACH, Errno::ETIMEDOUT, Errno::ECONNRESET, IOError, Errno::EBADF
-    nil # client disconnected or timed out
+  rescue Errno::ETIMEDOUT
+    close # client disconnected or timed out
   end
 end
