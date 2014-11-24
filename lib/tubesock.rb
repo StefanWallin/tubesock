@@ -39,8 +39,8 @@ class Tubesock
       type: type
     )
     @socket.write frame.to_s
-  rescue IOError, Errno::EPIPE
-    close
+  rescue IOError, Errno::EPIPE => e
+    close(e.message)
   end
 
   def onopen(&block)
@@ -57,18 +57,23 @@ class Tubesock
 
   def listen
     keepalive
-    Thread.new do
+    listenThread = Thread.new do
       Thread.current.abort_on_exception = true
       @open_handlers.each(&:call)
       each_frame do |data|
         @message_handlers.each{|h| h.call(data) }
       end
       close
+
+      onclose do
+        listenThread.kill unless listenThread.nil?
+      end
     end
   end
 
-  def close
-    @close_handlers.each(&:call)
+  def close(cause)
+    cause = 'unknown' if cause.nil?
+    @close_handlers.each{ |h| h.call(cause) }
     @socket.close unless @socket.closed?
   end
 
@@ -106,7 +111,6 @@ class Tubesock
         end
       end
     end
-  rescue Errno::EHOSTUNREACH, Errno::ETIMEDOUT, Errno::ECONNRESET, IOError, Errno::EBADF
-    nil # client disconnected or timed out
-  end
+  rescue Errno::ETIMEDOUT, Errno::ECONNRESET, Errno::EHOSTUNREACH, IOError, Errno::EBADF => e
+    close(e.message) # client disconnected or timed out
 end
