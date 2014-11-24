@@ -67,6 +67,16 @@ class ChatController < ApplicationController
 end
 ```
 
+## Custom configuration
+### Handling connection errors
+Sometimes connections stop working and you might want to handle that in your application. You can do this with the ```tubesock.onclose```-method as such:
+```ruby
+  tubesock.onclose do |closeCause|
+    ## log closeCause
+    ## take action depending on error returned
+    ## close any socket/session-related resource
+  end
+```
 ## Contributing
 
 1. Fork it
