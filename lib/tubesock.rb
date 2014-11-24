@@ -10,10 +10,12 @@ class Tubesock
   def initialize(socket, version)
     @socket     = socket
     @version    = version
+    @num_valid_timeouts = 5
 
     @open_handlers    = []
     @message_handlers = []
     @close_handlers   = []
+    @ping_frames = {}
   end
 
   def self.hijack(env)
@@ -30,6 +32,10 @@ class Tubesock
     else
       raise Tubesock::HijackNotAvailable
     end
+  end
+
+  def set_num_missed_frames(new_timeout)
+    @num_valid_timeouts = new_timeout if new_timeout.is_a? Integer
   end
 
   def send_data data, type = :text
@@ -81,7 +87,12 @@ class Tubesock
       Thread.current.abort_on_exception = true
       loop do
         sleep 5
-        send_data nil, :ping
+        stamp = Time.now.to_i.to_s
+        send_data stamp, :ping
+        @ping_frames[stamp.to_sym] = 1 # Any non-null-value would do.
+        if @ping_frames.length > @num_valid_timeouts
+          close
+        end
       end
     end
 
@@ -103,6 +114,8 @@ class Tubesock
           return
         when :text, :binary
           yield frame.data
+        when :pong
+          @ping_frames.delete(frame.data.to_sym)
         end
       end
     end
