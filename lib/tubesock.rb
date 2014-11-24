@@ -77,7 +77,7 @@ class Tubesock
   end
 
   def keepalive
-    thread = Thread.new do
+    keepaliveThread = Thread.new do
       Thread.current.abort_on_exception = true
       loop do
         sleep 5
@@ -86,7 +86,7 @@ class Tubesock
     end
 
     onclose do
-      thread.kill
+      keepaliveThread.kill unless keepaliveThread.nil?
     end
   end
 
